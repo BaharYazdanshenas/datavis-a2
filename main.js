@@ -18,3 +18,8 @@ svg.append("circle")
   .attr("r", 30)
   .attr("fill", "steelblue");
 };
+
+d3.csv("cars.csv").then(function(data) {
+    console.log("Cars data:", data);
+    window.carsData = data;  // <- add this line just for exploration
+});
