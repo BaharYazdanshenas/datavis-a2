@@ -3,8 +3,9 @@ window.onload = () => {
 
   // YOUR CODE GOES HERE
   console.log("YOUR CODE GOES HERE");
+};
 
-  // Load the data set from the assets folder:
+// Load the data set from the assets folder:
   console.log("D3 assignment test");
 
 const svg = d3.select("body")
@@ -17,7 +18,6 @@ svg.append("circle")
   .attr("cy", 150)
   .attr("r", 30)
   .attr("fill", "steelblue");
-};
 
 d3.csv("cars.csv").then(function(data) {
     console.log("Cars data:", data);
