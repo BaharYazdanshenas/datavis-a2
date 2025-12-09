@@ -101,105 +101,186 @@
 // }
 
 
-window.onload = () => {
+// 1. Columns that should be numeric
+const numericCols = [
+  "AWD", "RWD",
+  "Retail Price", "Dealer Cost",
+  "Engine Size (l)", "Cyl",
+  "Horsepower(HP)",
+  "City Miles Per Gallon", "Highway Miles Per Gallon",
+  "Weight", "Wheel Base", "Len", "Width"
+];
 
-    d3.csv("cars.csv", d => ({
-        Name: d["Name"],
-        Type: d["Type"],
-        AWD: +d["AWD"],
-        RWD: +d["RWD"],
-        RetailPrice: +d["Retail Price"],
-        DealerCost: +d["Dealer Cost"],
-        EngineSizeInL: +d["Engine Size (l)"],
-        Cyl: +d["Cyl"],
-        Horsepower: +d["Horsepower(HP)"],
-        CityMilesPerGallon: +d["City Miles Per Gallon"],
-        HighwayMilesPerGallon: +d["Highway Miles Per Gallon"],
-        Weight: +d["Weight"],
-        WheelBase: +d["Wheel Base"],
-        Len: +d["Len"],
-        Width: +d["Width"]
-    })).then(data => {
+// ---------- Diagnostics ----------
+function runDiagnostics(data) {
 
-        const width = 640;
-        const height = 400;
-        const marginTop = 20;
-        const marginRight = 20;
-        const marginBottom = 30;
-        const marginLeft = 40;
-
-        const x = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.Horsepower)])
-            .range([marginLeft, width - marginRight]);
-
-        const y = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.RetailPrice)])
-            .range([height - marginBottom, marginTop]);
-
-        const color = d3.scaleOrdinal()
-            .domain(["Sedan", "Minivan", "Wagon", "SUV", "Sports Car"])
-            .range(["#1EC949", "#9E1EC9", "#C91E49", "#1E49C9", "#C99E1E"]);
-
-        const svg = d3.create("svg")
-            .attr("width", width)
-            .attr("height", height);
-
-        // Achsen
-        svg.append("g")
-            .attr("transform", `translate(0,${height - marginBottom})`)
-            .call(d3.axisBottom(x));
-
-        svg.append("g")
-            .attr("transform", `translate(${marginLeft},0)`)
-            .call(d3.axisLeft(y));
-
-        // Achsentitel
-        svg.append("text")
-            .attr("x", width / 2)
-            .attr("y", height - 10)
-            .text("Horsepower in ps");
-
-        svg.append("text")
-            .attr("x", -height / 2)
-            .attr("y", 15)
-            .attr("transform", "rotate(-90)")
-            .text("Retail price");
-
-        // Tooltip erzeugen
-        const tooltip = d3.select("body")
-            .append("div")
-            .style("position", "absolute")
-            .style("padding", "6px")
-            .style("background", "#eee")
-            .style("border", "1px solid #aaa")
-            .style("border-radius", "4px")
-            .style("opacity", 0);
-
-        // Punkte zeichnen
-        svg.selectAll(".dot")
-            .data(data)
-            .enter()
-            .append("circle")          // fehlend!
-            .attr("class", "dot")
-            .attr("cx", d => x(d.Horsepower))
-            .attr("cy", d => y(d.RetailPrice))
-            .attr("r", 5)
-            .attr("fill", d => color(d.Type))   // color, nicht type!
-            .on("mouseover", (event, d) => {
-                tooltip.transition().duration(100).style("opacity", 1);
-                tooltip.html(`
-                    <strong>${d.Name}</strong>
-                    <br>Engine Size: ${d.EngineSizeInL}
-                    <br>Dealer Cost: ${d.DealerCost}
-                    <br>Cylinder: ${d.Cyl}
-                    <br>City MPG: ${d.CityMilesPerGallon}
-                    <br>Highway MPG: ${d.HighwayMilesPerGallon}
-                `)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 40) + "px");
-            })
-            .on("mouseout", () => tooltip.transition().duration(200).style("opacity", 0));
-
-        document.body.appendChild(svg.node());
+  // convert relevant columns to numbers
+  data.forEach(d => {
+    numericCols.forEach(col => {
+      if (d[col] !== undefined) d[col] = +d[col];
     });
-};
+  });
+
+  function flag(i, reason, col, value, row) {
+    console.log(
+      `Row ${i} – ${reason} in "${col}" = ${value} (Name: ${row.Name})`,
+      row
+    );
+  }
+
+  const rules = {
+    "Engine Size (l)": { min: 0.5, max: 10, forbidZero: true },
+    "Cyl": { allowed: [3, 4, 5, 6, 8, 10, 12] },
+    "Horsepower(HP)": { min: 40, max: 1000, forbidZero: true },
+    "City Miles Per Gallon": { min: 5, max: 80 },
+    "Highway Miles Per Gallon": { min: 5, max: 80 },
+    "Weight": { min: 500, max: 10000, forbidZero: true },
+    "Wheel Base": { min: 80, max: 200, forbidZero: true },
+    "Len": { min: 120, max: 260, forbidZero: true },
+    "Width": { min: 55, max: 90, forbidZero: true }
+  };
+
+  data.forEach((row, i) => {
+    for (const [col, r] of Object.entries(rules)) {
+      const v = row[col];
+      if (v == null || Number.isNaN(v)) continue;
+
+      if (r.forbidZero && v === 0)       flag(i, "zero where zero is impossible", col, v, row);
+      if (r.min != null && v < r.min)    flag(i, "below logical minimum",        col, v, row);
+      if (r.max != null && v > r.max)    flag(i, "above logical maximum",        col, v, row);
+      if (r.allowed && !r.allowed.includes(v))
+                                        flag(i, "value not in allowed set",     col, v, row);
+      if (v < 0)                         flag(i, "negative value",               col, v, row);
+    }
+  });
+
+  console.log("Diagnostics finished.");
+}
+
+// ---------- Cleaning ----------
+function cleanData(data) {
+  return data.filter(d => {
+    const city  = +d["City Miles Per Gallon"];
+    const hwy   = +d["Highway Miles Per Gallon"];
+    const wb    = +d["Wheel Base"];
+    const width = +d["Width"];
+    const eng   = +d["Engine Size (l)"];
+
+    // impossible values → drop row
+    if (city <= 0 || city > 100) return false;
+    if (hwy  <= 0 || hwy  > 100) return false;
+    if (wb   <= 50 || wb   > 200) return false;
+    if (width<= 50 || width> 100) return false;
+    if (eng  <= 0  || eng  > 10)  return false;
+
+    return true;
+  });
+}
+
+// ---------- Main: load CSV, clean, draw ----------
+d3.csv("cars.csv").then(function (data) {
+  console.log("Cars data (raw):", data.length);
+
+  window.carsRaw = data;
+  runDiagnostics(data);
+
+  const cleaned = cleanData(data);
+  cleaned.columns = data.columns;        
+
+  window.carsCleaned = cleaned;
+  console.log("Cleaned rows:", cleaned.length);
+
+  const svgNode = scatterMatrix(cleaned);
+  document.body.appendChild(svgNode);
+});
+
+// ---------- Scatterplot matrix ----------
+function scatterMatrix(data) {
+  const width = 900;
+  const padding = 30;
+
+  // keep only numeric columns
+  const columns = data.columns.filter(col => !isNaN(+data[0][col]));
+  const n = columns.length;
+  const size = (width - (n + 1) * padding) / n + padding;
+  const height = size * n;
+
+  const x = columns.map(c =>
+    d3.scaleLinear()
+      .domain(d3.extent(data, d => +d[c])).nice()
+      .range([padding / 2, size - padding / 2])
+  );
+
+  const y = x.map(s =>
+    s.copy().range([size - padding / 2, padding / 2])
+  );
+
+  const axisx = d3.axisBottom().ticks(4).tickSize(size * n);
+  const axisy = d3.axisLeft().ticks(4).tickSize(-size * n);
+
+  const xAxis = g => g.selectAll("g")
+    .data(x)
+    .join("g")
+      .attr("transform", (d, i) => `translate(${i * size},0)`)
+      .each(function (d) { d3.select(this).call(axisx.scale(d)); })
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick line").attr("stroke", "#ddd"));
+
+  const yAxis = g => g.selectAll("g")
+    .data(y)
+    .join("g")
+      .attr("transform", (d, i) => `translate(0,${i * size})`)
+      .each(function (d) { d3.select(this).call(axisy.scale(d)); })
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick line").attr("stroke", "#ddd"));
+
+  const svg = d3.create("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [-padding, 0, width, height]);
+
+  svg.append("g").call(xAxis);
+  svg.append("g").call(yAxis);
+
+  const cell = svg.append("g")
+    .selectAll("g")
+    .data(d3.cross(d3.range(n), d3.range(n)))
+    .join("g")
+      .attr("transform", ([i, j]) => `translate(${i * size},${j * size})`);
+
+  cell.append("rect")
+      .attr("fill", "none")
+      .attr("stroke", "#aaa")
+      .attr("x", padding / 2 + 0.5)
+      .attr("y", padding / 2 + 0.5)
+      .attr("width", size - padding)
+      .attr("height", size - padding);
+
+  cell.each(function ([i, j]) {
+    d3.select(this).selectAll("circle")
+      .data(
+        data.filter(d =>
+          !isNaN(+d[columns[i]]) && !isNaN(+d[columns[j]])
+        )
+      )
+      .join("circle")
+        .attr("cx", d => x[i](+d[columns[i]]))
+        .attr("cy", d => y[j](+d[columns[j]]))
+        .attr("r", 2)
+        .attr("fill", "steelblue")
+        .attr("fill-opacity", 0.6);
+  });
+
+  svg.append("g")
+    .style("font", "bold 10px sans-serif")
+    .style("pointer-events", "none")
+    .selectAll("text")
+    .data(columns)
+    .join("text")
+      .attr("transform", (d, i) => `translate(${i * size},${i * size})`)
+      .attr("x", padding)
+      .attr("y", padding)
+      .text(d => d);
+
+  return svg.node();
+}
