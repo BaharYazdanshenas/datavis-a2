@@ -165,6 +165,7 @@ function cleanData(data) {
     const wb    = +d["Wheel Base"];
     const width = +d["Width"];
     const eng   = +d["Engine Size (l)"];
+    const cyl   = +d["Cyl"];              // <-- add this
 
     // impossible values → drop row
     if (city <= 0 || city > 100) return false;
@@ -172,6 +173,7 @@ function cleanData(data) {
     if (wb   <= 50 || wb   > 200) return false;
     if (width<= 50 || width> 100) return false;
     if (eng  <= 0  || eng  > 10)  return false;
+    if (cyl  <= 0)               return false;   // <-- NEW: remove 0-cyl cars
 
     return true;
   });
@@ -339,12 +341,19 @@ function drawMainScatter(data) {
       .domain(types)
       .range(d3.schemeCategory10.slice(0, types.length));
 
-  // --- size by number of cylinders (radius, not area) ---
-  const cylValues = Array.from(new Set(data.map(d => d.cyl))).sort(d3.ascending);
-  const size = d3.scaleSqrt()               // sqrt → radius grows clearly
-      .domain(d3.extent(cylValues))
-      .range([4, 18]);                       // min / max radius in pixels
+  // --- size by number of cylinders (discrete radii, sharper contrast) ---
+const cylValues = Array.from(new Set(data.map(d => d.cyl)))
+  .filter(c => c > 0)              // just in case, remove any remaining 0
+  .sort(d3.ascending);
 
+// choose radii so each step is clearly visible
+const radii = [6, 10, 14, 18, 22, 26, 30].slice(0, cylValues.length);
+
+const size = d3.scaleOrdinal()
+  .domain(cylValues)
+  .range(radii);
+
+  
   // --- SVG container ---
   const svg = d3.create("svg")
       .attr("width", width)
