@@ -177,113 +177,113 @@ function cleanData(data) {
   });
 }
 
-// // ---------- Main: load CSV, clean, draw ----------
-// d3.csv("cars.csv").then(function (data) {
-//   console.log("Cars data (raw):", data.length);
+// ---------- Main: load CSV, clean, draw ----------
+d3.csv("cars.csv").then(function (data) {
+  console.log("Cars data (raw):", data.length);
 
-//   window.carsRaw = data;
-//   runDiagnostics(data);
+  window.carsRaw = data;
+  runDiagnostics(data);
 
-//   const cleaned = cleanData(data);
-//   cleaned.columns = data.columns;        
+  const cleaned = cleanData(data);
+  cleaned.columns = data.columns;        
 
-//   window.carsCleaned = cleaned;
-//   console.log("Cleaned rows:", cleaned.length);
+  window.carsCleaned = cleaned;
+  console.log("Cleaned rows:", cleaned.length);
 
-//   const svgNode = scatterMatrix(cleaned);
-//   document.body.appendChild(svgNode);
-// });
+  const svgNode = scatterMatrix(cleaned);
+  document.body.appendChild(svgNode);
+});
 
-// // ---------- Scatterplot matrix ----------
-// function scatterMatrix(data) {
-//   const width = 900;
-//   const padding = 30;
+// ---------- Scatterplot matrix ----------
+function scatterMatrix(data) {
+  const width = 900;
+  const padding = 30;
 
-//   // keep only numeric columns
-//   const columns = data.columns.filter(col => !isNaN(+data[0][col]));
-//   const n = columns.length;
-//   const size = (width - (n + 1) * padding) / n + padding;
-//   const height = size * n;
+  // keep only numeric columns
+  const columns = data.columns.filter(col => !isNaN(+data[0][col]));
+  const n = columns.length;
+  const size = (width - (n + 1) * padding) / n + padding;
+  const height = size * n;
 
-//   const x = columns.map(c =>
-//     d3.scaleLinear()
-//       .domain(d3.extent(data, d => +d[c])).nice()
-//       .range([padding / 2, size - padding / 2])
-//   );
+  const x = columns.map(c =>
+    d3.scaleLinear()
+      .domain(d3.extent(data, d => +d[c])).nice()
+      .range([padding / 2, size - padding / 2])
+  );
 
-//   const y = x.map(s =>
-//     s.copy().range([size - padding / 2, padding / 2])
-//   );
+  const y = x.map(s =>
+    s.copy().range([size - padding / 2, padding / 2])
+  );
 
-//   const axisx = d3.axisBottom().ticks(4).tickSize(size * n);
-//   const axisy = d3.axisLeft().ticks(4).tickSize(-size * n);
+  const axisx = d3.axisBottom().ticks(4).tickSize(size * n);
+  const axisy = d3.axisLeft().ticks(4).tickSize(-size * n);
 
-//   const xAxis = g => g.selectAll("g")
-//     .data(x)
-//     .join("g")
-//       .attr("transform", (d, i) => `translate(${i * size},0)`)
-//       .each(function (d) { d3.select(this).call(axisx.scale(d)); })
-//       .call(g => g.select(".domain").remove())
-//       .call(g => g.selectAll(".tick line").attr("stroke", "#ddd"));
+  const xAxis = g => g.selectAll("g")
+    .data(x)
+    .join("g")
+      .attr("transform", (d, i) => `translate(${i * size},0)`)
+      .each(function (d) { d3.select(this).call(axisx.scale(d)); })
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick line").attr("stroke", "#ddd"));
 
-//   const yAxis = g => g.selectAll("g")
-//     .data(y)
-//     .join("g")
-//       .attr("transform", (d, i) => `translate(0,${i * size})`)
-//       .each(function (d) { d3.select(this).call(axisy.scale(d)); })
-//       .call(g => g.select(".domain").remove())
-//       .call(g => g.selectAll(".tick line").attr("stroke", "#ddd"));
+  const yAxis = g => g.selectAll("g")
+    .data(y)
+    .join("g")
+      .attr("transform", (d, i) => `translate(0,${i * size})`)
+      .each(function (d) { d3.select(this).call(axisy.scale(d)); })
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick line").attr("stroke", "#ddd"));
 
-//   const svg = d3.create("svg")
-//     .attr("width", width)
-//     .attr("height", height)
-//     .attr("viewBox", [-padding, 0, width, height]);
+  const svg = d3.create("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [-padding, 0, width, height]);
 
-//   svg.append("g").call(xAxis);
-//   svg.append("g").call(yAxis);
+  svg.append("g").call(xAxis);
+  svg.append("g").call(yAxis);
 
-//   const cell = svg.append("g")
-//     .selectAll("g")
-//     .data(d3.cross(d3.range(n), d3.range(n)))
-//     .join("g")
-//       .attr("transform", ([i, j]) => `translate(${i * size},${j * size})`);
+  const cell = svg.append("g")
+    .selectAll("g")
+    .data(d3.cross(d3.range(n), d3.range(n)))
+    .join("g")
+      .attr("transform", ([i, j]) => `translate(${i * size},${j * size})`);
 
-//   cell.append("rect")
-//       .attr("fill", "none")
-//       .attr("stroke", "#aaa")
-//       .attr("x", padding / 2 + 0.5)
-//       .attr("y", padding / 2 + 0.5)
-//       .attr("width", size - padding)
-//       .attr("height", size - padding);
+  cell.append("rect")
+      .attr("fill", "none")
+      .attr("stroke", "#aaa")
+      .attr("x", padding / 2 + 0.5)
+      .attr("y", padding / 2 + 0.5)
+      .attr("width", size - padding)
+      .attr("height", size - padding);
 
-//   cell.each(function ([i, j]) {
-//     d3.select(this).selectAll("circle")
-//       .data(
-//         data.filter(d =>
-//           !isNaN(+d[columns[i]]) && !isNaN(+d[columns[j]])
-//         )
-//       )
-//       .join("circle")
-//         .attr("cx", d => x[i](+d[columns[i]]))
-//         .attr("cy", d => y[j](+d[columns[j]]))
-//         .attr("r", 2)
-//         .attr("fill", "steelblue")
-//         .attr("fill-opacity", 0.6);
-//   });
+  cell.each(function ([i, j]) {
+    d3.select(this).selectAll("circle")
+      .data(
+        data.filter(d =>
+          !isNaN(+d[columns[i]]) && !isNaN(+d[columns[j]])
+        )
+      )
+      .join("circle")
+        .attr("cx", d => x[i](+d[columns[i]]))
+        .attr("cy", d => y[j](+d[columns[j]]))
+        .attr("r", 2)
+        .attr("fill", "steelblue")
+        .attr("fill-opacity", 0.6);
+  });
 
-//   svg.append("g")
-//     .style("font", "bold 10px sans-serif")
-//     .style("pointer-events", "none")
-//     .selectAll("text")
-//     .data(columns)
-//     .join("text")
-//       .attr("transform", (d, i) => `translate(${i * size},${i * size})`)
-//       .attr("x", padding)
-//       .attr("y", padding)
-//       .text(d => d);
+  svg.append("g")
+    .style("font", "bold 10px sans-serif")
+    .style("pointer-events", "none")
+    .selectAll("text")
+    .data(columns)
+    .join("text")
+      .attr("transform", (d, i) => `translate(${i * size},${i * size})`)
+      .attr("x", padding)
+      .attr("y", padding)
+      .text(d => d);
 
-//   return svg.node();
-// }
+  return svg.node();
+}
 
 // ---------- Main: load CSV, clean, draw ----------
 d3.csv("cars.csv").then(function (data) {
